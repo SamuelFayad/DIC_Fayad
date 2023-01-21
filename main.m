@@ -12,24 +12,25 @@ clc, clear, close all
 %     def(:,:,image_ind) = double(imread(char(strcat(PATHNAME_DEF,'/',FILENAME_DEF(image_ind)))));
 % end
 
-%load('example_data_temp.mat')
-
+% load('example_data_temp.mat')
 
 %% define ROI
-% imshow(uint8(ref))
+% figure
+% imagesc(uint8(ref)), colormap gray, axis equal
 % title('Draw ROI')
 % [~,j_px,i_px] = roipoly() ; % this has the option of other ROI types
-% imshow(uint8(ref))
-% title('Draw ROI')
-% [~,j_px,i_px] = roipoly() ; % this has the option of other ROI types
+% imagesc(uint8(ref)), colormap gray, axis equal
+% title('Draw Exclusion')
+% [~,j_px_exclude,i_px_exclude] = roipoly() ; % this has the option of other ROI types
 load('example_data_and_roi.mat')
 
-%% define step size
-step_size = 30;
+%% define sample step size
+step_size = 2;
 
 %% define grid based on ROI and step size
 [grid_DIC_x grid_DIC_y] = meshgrid(1:step_size:size(ref,2),1:step_size:size(ref,1));
 points_in_ROI = inpolygon( grid_DIC_x , grid_DIC_y , j_px , i_px );
+points_in_ROI(inpolygon( grid_DIC_x , grid_DIC_y , j_px_exclude , i_px_exclude ))=0;
 grid_DIC_x = grid_DIC_x(points_in_ROI);
 grid_DIC_y = grid_DIC_y(points_in_ROI);
 
@@ -48,33 +49,38 @@ subset = create_subset(subset_info);
 % see other file
 
 %% define optimization
-x0 = zeros(subset.order,1);
 options = optimoptions('fminunc','Display','none');
 found_parameters = zeros(subset.order,length(grid_DIC_x),size(def,3));
 SSD = zeros(length(grid_DIC_x),size(def,3));
+DIC_u = zeros(length(grid_DIC_x),size(def,3));
+DIC_v = zeros(length(grid_DIC_x),size(def,3));
+Exx = zeros(length(grid_DIC_x),size(def,3));
+Eyy = zeros(length(grid_DIC_x),size(def,3));
+Exy = zeros(length(grid_DIC_x),size(def,3));
 v = zeros(size(grid_DIC_x));
+vsg_size = step_size*5;
 %% define post processing
-figure
-set(gcf,'color','w')
 for image_ind = 1 %: size(def,3)
     f = waitbar(0,strcat('Analyzing image-',num2str(image_ind)));
+    movegui(f);
     def_interp = griddedInterpolant(image_coords_i,image_coords_j,def(:,:,image_ind),'spline');
+    x0 = initial_guess(image_ind,found_parameters);
+
     for point_ind = 1 : length(grid_DIC_x)
         point_of_interest = [grid_DIC_x(point_ind) grid_DIC_y(point_ind)];
-        [alpha_opt,fval,exitflag,output] = fminunc(@(alpha_opt) cost_fun(alpha_opt,subset,point_of_interest,def_interp,ref),x0,options);
+        [alpha_opt,fval,exitflag,output] = fminunc(@(alpha_opt) cost_fun(alpha_opt,subset,point_of_interest,def_interp,ref),x0(:,point_ind),options);
         found_parameters(:,point_ind,image_ind)=alpha_opt;
         SSD(point_ind,image_ind)=fval;
         v(point_ind) = alpha_opt(1);
         waitbar(point_ind/length(grid_DIC_x),f)
 
     end
+    DIC_u(:,image_ind) = found_parameters(4,:,image_ind);
+    DIC_v(:,image_ind) = found_parameters(1,:,image_ind);
+    [exx, eyy, exy] = compute_strain(grid_DIC_x,grid_DIC_y,DIC_u(:,image_ind),DIC_v(:,image_ind),vsg_size);
+    Exx(:,image_ind) = exx;
+    Eyy(:,image_ind) = eyy;
+    Exy(:,image_ind) = exy;
     close(f)
-    scatter(grid_DIC_x,grid_DIC_y,3,v)
-    xlabel('x-pixel')
-    ylabel('y-pixel')
-    axis equal
-    title(strcat('image-',num2str(image_ind)))
-    colorbar
-    caxis([-0.5 0.5])
-    
+    plot_with_image(ref,grid_DIC_x,grid_DIC_y,DIC_u(:,image_ind),DIC_v(:,image_ind),eyy,'E_{yy}',image_ind)    
 end
