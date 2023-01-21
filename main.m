@@ -1,31 +1,30 @@
 % created January 20, 2023 by Samuel Fayad as a test repository to more familiarize myself with GitHub
 % all of the code here-in will be created on the spot.
 
-
 clc, clear, close all
 
 %% upload images
-% [FILENAME_REF, PATHNAME_REF] = uigetfile('*.*');
-% ref = double(imread(strcat(PATHNAME_REF,'/',FILENAME_REF)));
-% [FILENAME_DEF, PATHNAME_DEF] = uigetfile('*.*','Select deformed images','Multiselect','on');
-% for image_ind = 1:length(FILENAME_DEF)
-%     def(:,:,image_ind) = double(imread(char(strcat(PATHNAME_DEF,'/',FILENAME_DEF(image_ind)))));
-% end
+[FILENAME_REF, PATHNAME_REF] = uigetfile('*.*');
+ref = double(imread(strcat(PATHNAME_REF,'/',FILENAME_REF)));
+[FILENAME_DEF, PATHNAME_DEF] = uigetfile('*.*','Select deformed images','Multiselect','on');
+for image_ind = 1:length(FILENAME_DEF)
+    def(:,:,image_ind) = double(imread(char(strcat(PATHNAME_DEF,'/',FILENAME_DEF(image_ind)))));
+end
 
 % load('example_data_temp.mat')
 
 %% define ROI
-% figure
-% imagesc(uint8(ref)), colormap gray, axis equal
-% title('Draw ROI')
-% [~,j_px,i_px] = roipoly() ; % this has the option of other ROI types
-% imagesc(uint8(ref)), colormap gray, axis equal
-% title('Draw Exclusion')
-% [~,j_px_exclude,i_px_exclude] = roipoly() ; % this has the option of other ROI types
-load('example_data_and_roi.mat')
+figure
+imagesc(uint8(ref)), colormap gray, axis equal
+title('Draw ROI')
+[~,j_px,i_px] = roipoly() ; % this has the option of other ROI types
+%imagesc(uint8(ref)), colormap gray, axis equal
+title('Draw Exclusion')
+[~,j_px_exclude,i_px_exclude] = roipoly() ; % this has the option of other ROI types
+%load('example_data_and_roi.mat')
 
 %% define sample step size
-step_size = 2;
+step_size = 12;
 
 %% define grid based on ROI and step size
 [grid_DIC_x grid_DIC_y] = meshgrid(1:step_size:size(ref,2),1:step_size:size(ref,1));
@@ -57,8 +56,8 @@ DIC_v = zeros(length(grid_DIC_x),size(def,3));
 Exx = zeros(length(grid_DIC_x),size(def,3));
 Eyy = zeros(length(grid_DIC_x),size(def,3));
 Exy = zeros(length(grid_DIC_x),size(def,3));
-v = zeros(size(grid_DIC_x));
 vsg_size = step_size*5;
+
 %% define post processing
 for image_ind = 1 %: size(def,3)
     f = waitbar(0,strcat('Analyzing image-',num2str(image_ind)));
@@ -71,7 +70,6 @@ for image_ind = 1 %: size(def,3)
         [alpha_opt,fval,exitflag,output] = fminunc(@(alpha_opt) cost_fun(alpha_opt,subset,point_of_interest,def_interp,ref),x0(:,point_ind),options);
         found_parameters(:,point_ind,image_ind)=alpha_opt;
         SSD(point_ind,image_ind)=fval;
-        v(point_ind) = alpha_opt(1);
         waitbar(point_ind/length(grid_DIC_x),f)
 
     end
