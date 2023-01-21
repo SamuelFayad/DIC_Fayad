@@ -1,4 +1,4 @@
-% created January 20, 2023 by Samuel Fayad as a test repository to more familiarize myself with GitHub
+% created January 20, 2023 by Sam as a test repository to more familiarize myself with GitHub
 % all of the code here-in will be created on the spot.
 
 clc, clear, close all
