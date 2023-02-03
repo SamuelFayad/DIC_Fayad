@@ -1,6 +1,6 @@
 function subset_struct = create_subset(subset_info)
 
-
+subset_struct.step_size = subset_info.step_size;
 if strcmp(subset_info.shape,'circle')
 else % make it a square
     subset_struct.points_x = (-(subset_info.size-1)/2:(subset_info.size-1)/2).*ones(subset_info.size);
